@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import Layout from './components/Layout'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import CreateTeam from './pages/CreateTeam'
 import Dashboard from './pages/Dashboard'
 import EventsCalendar from './pages/EventsCalendar'
 import Login from './pages/Login'
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route element={<Protected><Layout /></Protected>}>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/teams/create" element={<CreateTeam />} />
             <Route path="/teams/:teamId" element={<TeamView />} />
             <Route path="/events" element={<EventsCalendar />} />
             <Route path="/messages" element={<MessagingCenter />} />

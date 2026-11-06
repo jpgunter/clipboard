@@ -37,6 +37,8 @@ export interface TeamMembership {
   joinedAt: string
   jerseyNumber?: number
   teamRole: TeamRole
+  parentEmail?: string
+  guardianUserId?: string
   user?: User
   guardians?: GuardianLink[]
 }

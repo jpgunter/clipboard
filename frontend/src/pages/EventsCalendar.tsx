@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useServices } from '../context/ServicesContext'
-import type { TeamEvent, RsvpSummary, Team } from '../types'
+import type { TeamEvent, RsvpSummary, Team, EventType } from '../types'
 import { fmtDateTime } from '../lib/format'
 
 export default function EventsCalendar() {
@@ -38,7 +38,7 @@ export default function EventsCalendar() {
     await services.events.createEvent(selectedTeamId, {
       title: eventName.trim(),
       location: eventLocation.trim(),
-      eventType,
+      eventType: eventType as EventType,
       startTime: eventStartTime,
       endTime: eventEndTime,
     })

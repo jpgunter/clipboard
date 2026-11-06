@@ -18,7 +18,6 @@ const eventTypeColor: Record<string, string> = {
   SOCIAL: 'bg-green-900 text-green-200',
 }
 
-const EVENT_TYPES = ['GAME', 'PRACTICE', 'MEETING', 'SOCIAL']
 const STATUSES: RsvpStatus[] = ['YES', 'NO', 'MAYBE']
 
 export default function TeamView() {
