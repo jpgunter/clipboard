@@ -87,6 +87,7 @@ export interface TeamMessage {
   createdAt: string
   sender?: User
   gifUrl?: string
+  imageUrl?: string
   reactions?: Reaction[]
 }
 
@@ -98,6 +99,7 @@ export interface DirectMessage {
   content: string
   createdAt: string
   gifUrl?: string
+  imageUrl?: string
   reactions?: Reaction[]
 }
 

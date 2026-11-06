@@ -41,14 +41,14 @@ export interface RsvpService {
 
 export interface MessageService {
   listTeamMessages(teamId: string): Promise<TeamMessage[]>
-  postTeamMessage(teamId: string, content: string, gifUrl?: string): Promise<TeamMessage>
+  postTeamMessage(teamId: string, content: string, gifUrl?: string, imageUrl?: string): Promise<TeamMessage>
   react(msgId: string, emoji: string): Promise<void>
 }
 
 export interface DmService {
   listInbox(): Promise<DmThread[]>
   listMessages(otherUserId: string): Promise<DirectMessage[]>
-  sendMessage(otherUserId: string, content: string, gifUrl?: string): Promise<DirectMessage>
+  sendMessage(otherUserId: string, content: string, gifUrl?: string, imageUrl?: string): Promise<DirectMessage>
   react(msgId: string, emoji: string): Promise<void>
 }
 

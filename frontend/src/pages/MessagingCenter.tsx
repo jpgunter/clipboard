@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useServices } from '../context/ServicesContext'
 import { GifPicker } from '../components/GifPicker'
+import { ImagePicker } from '../components/ImagePicker'
 import { MessageList, type MessageItem } from '../components/MessageList'
 import type { DirectMessage, DmThread, Gif } from '../types'
 import { fmtDateShort } from '../lib/format'
@@ -11,7 +12,7 @@ interface ActiveChat {
   otherUserName: string
 }
 
-type Composer = 'text' | 'gif'
+type Composer = 'text' | 'gif' | 'image'
 
 export default function MessagingCenter() {
   const services = useServices()
@@ -60,6 +61,14 @@ export default function MessagingCenter() {
     setInbox(await services.dms.listInbox())
   }
 
+  const sendImage = async (imageUrl: string) => {
+    if (!active) return
+    await services.dms.sendMessage(active.otherUserId, '', undefined, imageUrl)
+    setComposer('text')
+    setMessages(await services.dms.listMessages(active.otherUserId))
+    setInbox(await services.dms.listInbox())
+  }
+
   const reactDm = async (msgId: string, emoji: string) => {
     if (!active) return
     await services.dms.react(msgId, emoji)
@@ -77,6 +86,7 @@ export default function MessagingCenter() {
     content: m.content,
     createdAt: m.createdAt,
     gifUrl: m.gifUrl,
+    imageUrl: m.imageUrl,
     reactions: m.reactions,
   }))
 
@@ -108,6 +118,7 @@ export default function MessagingCenter() {
                 <div className="flex gap-1">
                   <button type="button" onClick={() => setComposer('text')} className={composerBtn('text')}>Text</button>
                   <button type="button" onClick={() => setComposer('gif')} className={composerBtn('gif')}>GIF</button>
+                  <button type="button" onClick={() => setComposer('image')} className={composerBtn('image')}>Image</button>
                 </div>
                 {composer === 'text' ? (
                   <form onSubmit={send} className="flex gap-2">
@@ -119,8 +130,10 @@ export default function MessagingCenter() {
                     />
                     <button type="submit" className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500">Send</button>
                   </form>
-                ) : (
+                ) : composer === 'gif' ? (
                   <GifPicker onSelect={sendGif} />
+                ) : (
+                  <ImagePicker onSelect={sendImage} />
                 )}
               </div>
             </div>

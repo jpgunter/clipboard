@@ -170,9 +170,17 @@ export function createMockServices(): AppServices {
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
         .map((m) => ({ ...m, sender: findUser(m.senderId) }))
     },
-    async postTeamMessage(teamId, content, gifUrl) {
+    async postTeamMessage(teamId, content, gifUrl, imageUrl) {
       await delay()
-      const msg: TeamMessage = { msgId: newId(), teamId, senderId: CURRENT_USER_ID, content, createdAt: nowIso(), gifUrl }
+      const msg: TeamMessage = {
+        msgId: newId(),
+        teamId,
+        senderId: CURRENT_USER_ID,
+        content,
+        createdAt: nowIso(),
+        gifUrl,
+        imageUrl,
+      }
       teamMessages.push(msg)
       return { ...msg, sender: findUser(msg.senderId) }
     },
@@ -213,7 +221,7 @@ export function createMockServices(): AppServices {
         .filter((d) => d.dmChannelId === chan)
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     },
-    async sendMessage(otherUserId, content, gifUrl) {
+    async sendMessage(otherUserId, content, gifUrl, imageUrl) {
       await delay()
       const msg: DirectMessage = {
         msgId: newId(),
@@ -223,6 +231,7 @@ export function createMockServices(): AppServices {
         content,
         createdAt: nowIso(),
         gifUrl,
+        imageUrl,
       }
       dms.push(msg)
       return msg

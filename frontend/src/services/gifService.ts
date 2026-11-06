@@ -2,7 +2,7 @@ import type { Gif } from '../types'
 import type { GifService } from './interfaces'
 
 // Giphy public beta key - swap for your own at https://developers.giphy.com for production.
-const GIPHY_API_KEY = 'dc6zaTOxFJmzC'
+const GIPHY_API_KEY = 'hyBKZiYwzSXYIzmAswIjjekfX6Ys8SUj'
 const BASE = 'https://api.giphy.com/v1/gifs'
 
 interface GiphyImageSet {

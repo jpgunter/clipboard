@@ -3,12 +3,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useServices } from '../context/ServicesContext'
 import { GifPicker } from '../components/GifPicker'
+import { ImagePicker } from '../components/ImagePicker'
 import { MessageList, type MessageItem } from '../components/MessageList'
 import type { Gif, RsvpStatus, RsvpSummary, Team, TeamEvent, TeamMembership, TeamMessage } from '../types'
 import { fmtDateTime } from '../lib/format'
 
 type Tab = 'messages' | 'events' | 'team'
-type Composer = 'text' | 'gif'
+type Composer = 'text' | 'gif' | 'image'
 
 const eventTypeColor: Record<string, string> = {
   GAME: 'bg-red-900 text-red-200',
@@ -59,13 +60,19 @@ export default function TeamView() {
   const send = async (e: FormEvent) => {
     e.preventDefault()
     if (!draft.trim()) return
-    await services.messages.postTeamMessage(teamId, draft.trim())
+    await services.messages.postTeamMessage(teamId, draft.trim(), undefined, undefined)
     setDraft('')
     setMessages(await services.messages.listTeamMessages(teamId))
   }
 
   const sendGif = async (gif: Gif) => {
     await services.messages.postTeamMessage(teamId, '', gif.url)
+    setComposer('text')
+    setMessages(await services.messages.listTeamMessages(teamId))
+  }
+
+  const sendImage = async (imageUrl: string) => {
+    await services.messages.postTeamMessage(teamId, '', undefined, imageUrl)
     setComposer('text')
     setMessages(await services.messages.listTeamMessages(teamId))
   }
@@ -99,6 +106,7 @@ export default function TeamView() {
     content: m.content,
     createdAt: m.createdAt,
     gifUrl: m.gifUrl,
+    imageUrl: m.imageUrl,
     reactions: m.reactions,
   }))
 
@@ -124,6 +132,7 @@ export default function TeamView() {
               <div className="flex gap-1">
                 <button type="button" onClick={() => setComposer('text')} className={composerBtn('text')}>Text</button>
                 <button type="button" onClick={() => setComposer('gif')} className={composerBtn('gif')}>GIF</button>
+                <button type="button" onClick={() => setComposer('image')} className={composerBtn('image')}>Image</button>
               </div>
               {composer === 'text' ? (
                 <form onSubmit={send} className="flex gap-2">
@@ -134,9 +143,11 @@ export default function TeamView() {
                     className="flex-1 rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
                   />
                   <button type="submit" className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500">Send</button>
-                </form>
-              ) : (
+              </form>
+              ) : composer === 'gif' ? (
                 <GifPicker onSelect={sendGif} />
+              ) : (
+                <ImagePicker onSelect={sendImage} />
               )}
             </div>
           </div>

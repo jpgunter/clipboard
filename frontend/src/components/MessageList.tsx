@@ -11,6 +11,7 @@ export interface MessageItem {
   content: string
   createdAt: string
   gifUrl?: string
+  imageUrl?: string
   reactions?: Reaction[]
 }
 
@@ -19,6 +20,13 @@ interface MessageListProps {
   onReact: (msgId: string, emoji: string) => void
   showSender?: boolean
   emptyText?: string
+}
+
+const IMAGE_EXT_REGEX = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i
+
+function extractUrl(content: string): string | null {
+  const match = content.match(IMAGE_EXT_REGEX)
+  return match ? match[0] : null
 }
 
 export function MessageList({ messages, onReact, showSender = false, emptyText = 'No messages yet.' }: MessageListProps) {
@@ -36,17 +44,31 @@ export function MessageList({ messages, onReact, showSender = false, emptyText =
         {messages.length === 0 && <p className="text-sm text-gray-400">{emptyText}</p>}
         {messages.map((m) => {
           const mine = m.senderId === user?.userId
+          const textImageUrl = extractUrl(m.content ?? '')
+          const url = m.gifUrl ?? m.imageUrl ?? textImageUrl ?? ''
+
+          // Text with an embedded image link: strip the URL, keep the caption.
+          let textContent: string | null = null
+          if (url && m.content) {
+            const stripped = m.content.split(url).join('').trim()
+            textContent = stripped || null
+          } else {
+            textContent = m.content || null
+          }
+
+          const isImage = !!url
+
           return (
             <div key={m.msgId} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
               <div className="max-w-[75%]">
                 {showSender && !mine && (
                   <div className="mb-0.5 text-xs font-medium text-indigo-300">{m.senderName ?? m.senderId}</div>
                 )}
-                {m.gifUrl ? (
-                  <img src={m.gifUrl} alt="" className="max-h-40 rounded-lg" />
+                {isImage && url ? (
+                  <img src={url} alt="" className="max-h-40 rounded-lg" />
                 ) : (
                   <div className={`rounded-lg px-3 py-2 ${mine ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-100'}`}>
-                    {m.content}
+                    {textContent}
                   </div>
                 )}
                 <div className={`mt-0.5 text-xs text-gray-500 ${mine ? 'text-right' : ''}`}>
