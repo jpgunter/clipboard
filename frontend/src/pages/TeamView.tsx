@@ -5,7 +5,7 @@ import { useServices } from '../context/ServicesContext'
 import { GifPicker } from '../components/GifPicker'
 import { ImagePicker } from '../components/ImagePicker'
 import { MessageList, type MessageItem } from '../components/MessageList'
-import type { Gif, RsvpStatus, RsvpSummary, Team, TeamEvent, TeamMembership, TeamMessage } from '../types'
+import type { Gif, RsvpStatus, RsvpSummary, Team, TeamEvent, TeamMembership, TeamMessage, EventType } from '../types'
 import { fmtDateTime } from '../lib/format'
 
 type Tab = 'messages' | 'events' | 'team'
@@ -34,6 +34,12 @@ export default function TeamView() {
   const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(true)
   const [sendingImage, setSendingImage] = useState(false)
+  const [showCreateEvent, setShowCreateEvent] = useState(false)
+  const [eventName, setEventName] = useState('')
+  const [eventLocation, setEventLocation] = useState('')
+  const [eventType, setEventType] = useState('GAME')
+  const [eventStartTime, setEventStartTime] = useState('')
+  const [eventEndTime, setEventEndTime] = useState('')
 
   const load = async () => {
     const [t, m, ev, msgs] = await Promise.all([
@@ -55,6 +61,25 @@ export default function TeamView() {
 
   const setRsvp = async (eventId: string, status: RsvpStatus) => {
     await services.rsvp.setStatus(eventId, status)
+    setEvents(await services.events.listEvents(teamId))
+  }
+
+  const createEvent = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!eventName.trim() || !eventLocation.trim() || !eventStartTime || !eventEndTime) return
+    await services.events.createEvent(teamId, {
+      title: eventName.trim(),
+      location: eventLocation.trim(),
+      eventType: eventType as EventType,
+      startTime: eventStartTime,
+      endTime: eventEndTime,
+    })
+    setShowCreateEvent(false)
+    setEventName('')
+    setEventLocation('')
+    setEventType('GAME')
+    setEventStartTime('')
+    setEventEndTime('')
     setEvents(await services.events.listEvents(teamId))
   }
 
@@ -175,7 +200,58 @@ export default function TeamView() {
 
       {tab === 'events' && (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Events</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Events</h2>
+            <button
+              type="button"
+              onClick={() => setShowCreateEvent(!showCreateEvent)}
+              className="rounded bg-indigo-600 px-3 py-1.5 text-sm font-medium hover:bg-indigo-500"
+            >
+              {showCreateEvent ? 'Cancel' : '+ New Event'}
+            </button>
+          </div>
+          {showCreateEvent && (
+            <form onSubmit={createEvent} className="space-y-2 rounded-lg border border-gray-700 bg-gray-800 p-4">
+              <h3 className="font-semibold">Create Event</h3>
+              <input
+                value={eventName}
+                onChange={(e) => setEventName(e.target.value)}
+                placeholder="Event title"
+                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
+              />
+              <input
+                value={eventLocation}
+                onChange={(e) => setEventLocation(e.target.value)}
+                placeholder="Location"
+                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
+              />
+              <select
+                value={eventType}
+                onChange={(e) => setEventType(e.target.value)}
+                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
+              >
+                <option value="GAME">GAME</option>
+                <option value="PRACTICE">PRACTICE</option>
+                <option value="MEETING">MEETING</option>
+                <option value="SOCIAL">SOCIAL</option>
+              </select>
+              <input
+                type="datetime-local"
+                value={eventStartTime}
+                onChange={(e) => setEventStartTime(e.target.value)}
+                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
+              />
+              <input
+                type="datetime-local"
+                value={eventEndTime}
+                onChange={(e) => setEventEndTime(e.target.value)}
+                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
+              />
+              <button type="submit" className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500">
+                Schedule Event
+              </button>
+            </form>
+          )}
           {events.length === 0 && <p className="text-sm text-gray-400">No events scheduled.</p>}
           {events.map((e) => (
             <div key={e.eventId} className="rounded-lg border border-gray-700 bg-gray-800 p-4">
