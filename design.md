@@ -29,11 +29,12 @@ DynamoDB sort keys maintain lexicographical ordering. Standardizing timestamps i
 | :---- | :---- | :---- | :---- | :---- | :---- |
 | **User Profile** | `USER#<userId>` | `PROFILE` | \- | \- | `email`, `name`, `role`, `createdAt` |
 | **Team Metadata** | `TEAM#<teamId>` | `METADATA` | \- | \- | `teamName`, `sport`, `season`, `createdBy` |
-| **Team Membership** | `TEAM#<teamId>` | `USER#<userId>` | \- | \- | `joinedAt`, `jerseyNumber`, `teamRole` |
+| **Team Membership** | `TEAM#<teamId>` | `USER#<userId>` | \- | \- | `joinedAt`, `jerseyNumber`, `teamRole`, `parentEmail` |
 | **User's Teams Lookup** | `TEAM#<teamId>` | `USER#<userId>` | `USER#<userId>` | `TEAM#<teamId>` | `teamName`, `role` |
-| **Team Message** | `TEAM#<teamId>` | `MSG#<isoTimestamp>#<msgId>` | \- | \- | `senderId`, `content`, `createdAt` |
-| **Direct Message (DM)** | `DM#<dmChannelId>` | `MSG#<isoTimestamp>#<msgId>` | \- | \- | `senderId`, `recipientId`, `content`, `createdAt` |
+| **Team Message** | `TEAM#<teamId>` | `MSG#<isoTimestamp>#<msgId>` | \- | \- | `senderId`, `content`, `gifUrl`, `imageUrl`, `createdAt` |
+| **Direct Message (DM)** | `DM#<dmChannelId>` | `MSG#<isoTimestamp>#<msgId>` | \- | \- | `senderId`, `recipientId`, `content`, `gifUrl`, `imageUrl`, `createdAt` |
 | **User DM Lookup (Inbox)** | `DM#<dmChannelId>` | `USER#<userId>` | `USER#<userId>` | `DM#<isoTimestamp>#<dmChannelId>` | `otherUserId`, `lastMessage` |
+| **Guardian Link** | `USER#<playerId>` | `GUARDIAN#<guardianUserId>` | \- | \- | `relation`, `email` |
 | **Team Event** | `TEAM#<teamId>` | `EVENT#<startDateISO>#<eventId>` | \- | \- | `title`, `location`, `eventType`, `startTime`, `endTime` |
 | **RSVP** | `EVENT#<eventId>` | `RSVP#<userId>` | \- | \- | `status` (YES, NO, MAYBE), `updatedAt` |
 
@@ -50,6 +51,10 @@ To enforce a unique 1-to-1 conversation record between two parties regardless of
 * **Fetch DM Message History:** Query `PK = DM#<dmChannelId>` AND `SK begins_with "MSG#"`, configuring `ScanIndexForward = false` and setting a fixed `Limit = N` for pagination.  
 * **Fetch User DM Inbox:** Query index `GSI1` using `GSI1PK = USER#<userId>` AND `GSI1SK begins_with "DM#"`, sorted descending to surface the most recent conversations.  
 * **Send Message Transaction:** Execute a `TransactWriteItems` call containing the new message entry (`DM#<dmChannelId>`, `MSG#...`) alongside dual updates to the participant Inbox index records on GSI1 to keep metadata in sync.
+
+## **Minor-Player Communication Guard**
+
+Players whose membership record carries a `parentEmail` are treated as minors for messaging purposes. This guard is enforced server-side at the DM dispatch endpoint: the Lambda resolves the recipient's team memberships and rejects the request with `403 Forbidden` when any membership holds a `parentEmail`. The frontend mirrors this by suppressing the Message affordance for such players in the team roster UI, so the restriction is discoverable but never relied upon for enforcement.
 
 # **4\. Querying Events via Sort Key Ordering**
 
@@ -70,6 +75,7 @@ infra/
 │   ├── database-stack.ts
 │   ├── auth-stack.ts
 │   ├── api-stack.ts
+│   ├── media-stack.ts
 │   └── main-stack.ts
 └── cdk.json
 ```
@@ -79,6 +85,7 @@ infra/
 * `auth-stack.ts`: Configures Amazon Cognito User Pool with email sign-in, MFA support, and OAuth2/JWT issuance.  
 * `database-stack.ts`: Defines `SportsAppTable` with provisioned GSI1, on-demand billing mode, and Point-in-Time Recovery (PITR) enabled.  
 * `api-stack.ts`: Provisions API Gateway REST API with Cognito Authorizers, shared CORS rules, and Lambda proxy routes.
+* `media-stack.ts`: Provisions an S3 bucket for user-uploaded images with presigned-URL issuance via Lambda; images are referenced from messages by object key.
 
 # **6\. Backend Specification (Java 21 Lambdas)**
 
@@ -89,9 +96,10 @@ backend/
 ├── pom.xml
 ├── common-model/          # DTOs, Jackson serializers, DynamoDB Enhanced Client schemas
 ├── create-team-lambda/    # Handler for team creation and ownership bootstrapping
-├── list-events-lambda/    # Handler for event retrieval and aggregated RSVP metrics
+├── roster-lambda/         # Handler for listing and adding team members (incl. parent email)
+├── events-lambda/         # Handler for event scheduling, retrieval, and aggregated RSVP metrics
 ├── post-message-lambda/   # Handler for publishing team-level broadcast chat
-├── direct-message-lambda/ # Handler for DM dispatch and bidirectional inbox updates
+├── direct-message-lambda/ # Handler for DM dispatch, minor guard checks, and inbox updates
 └── manage-rsvp-lambda/    # Handler for event RSVP states and audit timestamps
 ```
 
@@ -99,12 +107,15 @@ backend/
 
 | Method | Resource Path | Purpose |
 | :---- | :---- | :---- |
-| `POST` | `/teams` | Provision new team and initialize creator ownership record. |
+| `POST` | `/teams` | Provision new team and initialize creator ownership record. Payload includes `teamName`, `sport`, `season`; when a sport or season outside the standard catalog is entered via the `Other` fallback, the free-text value is persisted as-is. |
+| `POST` | `/teams/{teamId}/members` | Add a player to the team roster with optional `jerseyNumber` and `parentEmail`. Creating the membership with a `parentEmail` flags the player for the minor communication guard (see §3). |
+| `GET` | `/teams/{teamId}/members` | Retrieve the team roster with roles, jersey numbers, and guardian links. |
 | `GET` | `/teams/{teamId}/events` | Fetch chronologically sorted team schedule and RSVP summaries. |
+| `POST` | `/teams/{teamId}/events` | Schedule a new team event (`title`, `location`, `eventType`, `startTime`, `endTime`). |
 | `POST` | `/teams/{teamId}/events/{eventId}/rsvp` | Submit or update event attendance status. |
-| `POST` | `/teams/{teamId}/messages` | Broadcast message to all members of the specified team. |
+| `POST` | `/teams/{teamId}/messages` | Broadcast message to all members of the specified team. Accepts `content` plus optional `gifUrl` / `imageUrl`. `imageUrl` refers to an object previously uploaded to the media bucket. |
 | `GET` | `/dms/{otherUserId}/messages` | Paginated retrieval of 1-to-1 direct message history (`limit=30`). |
-| `POST` | `/dms/{otherUserId}/messages` | Transact new direct message and update recipient inbox pointers. |
+| `POST` | `/dms/{otherUserId}/messages` | Transact new direct message and update recipient inbox pointers. Rejects with `403` when the recipient has a parent email on file. |
 
 # **7\. Frontend Architecture (React \+ TypeScript)**
 
@@ -114,13 +125,21 @@ backend/
 frontend/
 ├── src/
 │   ├── api/          # Axios HTTP client with Cognito Bearer Token interceptors
-│   ├── components/   # Atomic UI primitives, chat feed widgets, RSVP selectors
-│   ├── context/      # AuthContext managing active user tokens and session lifecycle
-│   ├── pages/        # Dashboard, TeamView, EventsCalendar, MessagingCenter
+│   ├── components/   # Atomic UI primitives, chat feed widgets, GIF picker, image picker
+│   ├── context/      # AuthContext (user session) and ServicesContext (service layer)
+│   ├── pages/        # Dashboard, CreateTeam, TeamView, EventsCalendar, MessagingCenter
+│   ├── services/     # AppServices interface + mock implementation (see §9)
 │   ├── App.tsx       # Route definitions and authenticated shell layout
 │   └── main.tsx      # Application entrypoint
 └── package.json
 ```
+
+## **Feature Notes**
+
+* **Rich Messaging:** Team and DM composers offer Text, GIF (Giphy), and Image modes. GIFs are attached as `gifUrl`; images are uploaded to object storage and attached as `imageUrl`. Messages carry at most one attachment; a text message containing an image URL is auto-rendered as an inline image with the URL stripped from the displayed caption.
+* **Team Creation:** A dedicated `/teams/create` route hosts the creation form. Sport and Season are dropdowns whose `Other` option reveals a free-text fallback input; the resolved value is sent to `POST /teams`.
+* **Event Scheduling:** Events can be created from the global Events Calendar page and from the Events tab of a team, sharing one create-event form (title, location, type, start/end datetimes).
+* **Roster & Parent Email:** The Team tab exposes an Add Player form (name, optional jersey number, optional parent email). Players flagged with a parent email display a guardian badge and have the direct-message affordance suppressed in the UI.
 
 # **8\. Execution Plan for Coder Agents**
 
@@ -141,5 +160,20 @@ frontend/
   * Implement Cognito authentication layer using React Context and Axios request interceptors.  
 * **Phase 5: Feature Integration & CI/CD Pipelines**  
   * Construct views for Team Dashboard, Schedule/RSVP tracking, and real-time DM chat.  
-  * Configure `.github/workflows/deploy.yml` for automated static deployments to GitHub Pages.
+  * Configure `.github/workflows/deploy.yml` for automated static deployments to GitHub Pages (two-job build → deploy workflow deploying `frontend/dist` with `base: '/clipboard/'`).
+
+# **9\. Current Implementation Status (Mock-First)**
+
+The frontend is fully implemented against an in-memory mock service layer, allowing all features to be exercised on GitHub Pages without backend infrastructure. All frontend contracts are defined up front in `services/interfaces.ts` (`AppServices`), so the mock can be swapped for real HTTP implementations without touching page components.
+
+## **What Ships Today**
+
+* **Mock services** (`services/mock/mockServices.ts`): in-memory state cloned from `seed.ts`, simulated latency, and parity with the real API surface — including the minor DM guard (throws on send) and roster addMember with parent email.
+* **Feature pages**: Dashboard, CreateTeam (dedicated page with Other-fallback dropdowns), TeamView (messages / events / team tabs), EventsCalendar, MessagingCenter.
+* **Rich messaging**: Text, Giphy GIF picker (trending + search), image picker with a mocked 2-second upload that shows a spinner overlay on the in-chat placeholder, URL auto-rendering, and emoji reactions.
+* **Seeded demo data**: two teams, players (two with parent emails to demonstrate the DM restriction), parents/guardians, events with RSVPs, and message history.
+
+## **Swap Path to the Real Backend**
+
+Each service interface maps 1:1 onto the REST endpoints in §6. Replacing the mock means implementing the same `AppServices` shape with Axios calls (auth token via interceptor), wiring the presigned image upload in place of the 2-second sleep, and switching `AuthContext` from the hardcoded `CURRENT_USER_ID` to Cognito session lookup.
 
