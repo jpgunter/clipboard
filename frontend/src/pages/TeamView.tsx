@@ -18,6 +18,7 @@ const eventTypeColor: Record<string, string> = {
   SOCIAL: 'bg-green-900 text-green-200',
 }
 
+const EVENT_TYPES = ['GAME', 'PRACTICE', 'MEETING', 'SOCIAL']
 const STATUSES: RsvpStatus[] = ['YES', 'NO', 'MAYBE']
 
 export default function TeamView() {
@@ -74,7 +75,6 @@ export default function TeamView() {
 
   const sendImage = async (imageUrl: string) => {
     const tempId = `temp-${Date.now()}`
-    // Show placeholder with spinner immediately
     const placeholderMsg: TeamMessage = {
       msgId: tempId,
       teamId,
@@ -163,7 +163,7 @@ export default function TeamView() {
                     className="flex-1 rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
                   />
                   <button type="submit" className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500">Send</button>
-              </form>
+                </form>
               ) : composer === 'gif' ? (
                 <GifPicker onSelect={sendGif} />
               ) : (
@@ -176,6 +176,7 @@ export default function TeamView() {
 
       {tab === 'events' && (
         <section className="space-y-3">
+          <h2 className="text-lg font-semibold">Events</h2>
           {events.length === 0 && <p className="text-sm text-gray-400">No events scheduled.</p>}
           {events.map((e) => (
             <div key={e.eventId} className="rounded-lg border border-gray-700 bg-gray-800 p-4">

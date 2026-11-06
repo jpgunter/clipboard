@@ -8,8 +8,11 @@ export default function Dashboard() {
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
-  const [sport, setSport] = useState('')
-  const [season, setSeason] = useState('')
+  const [sport, setSport] = useState<string>('select')
+  const [season, setSeason] = useState<string>('select')
+
+  const SPORTS = ['select', 'Soccer', 'Basketball', 'Baseball', 'Volleyball', 'Other']
+  const SEASONS = ['select', 'Spring', 'Summer', 'Fall', 'Winter', 'Other']
 
   const load = async () => {
     setLoading(true)
@@ -23,11 +26,11 @@ export default function Dashboard() {
 
   const create = async (e: FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) return
+    if (!name.trim() || sport === 'select' || season === 'select') return
     await services.teams.createTeam({ teamName: name.trim(), sport: sport.trim(), season: season.trim() })
     setName('')
-    setSport('')
-    setSeason('')
+    setSport('select')
+    setSeason('select')
     await load()
   }
 
@@ -61,18 +64,24 @@ export default function Dashboard() {
           placeholder="Team name"
           className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
         />
-        <input
+        <select
           value={sport}
           onChange={(e) => setSport(e.target.value)}
-          placeholder="Sport (e.g. Soccer)"
           className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
-        />
-        <input
+        >
+          {SPORTS.map((s) => (
+            <option key={s} value={s}>{s === 'select' ? 'Select sport...' : s}</option>
+          ))}
+        </select>
+        <select
           value={season}
           onChange={(e) => setSeason(e.target.value)}
-          placeholder="Season (e.g. Fall 2026)"
           className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
-        />
+        >
+          {SEASONS.map((s) => (
+            <option key={s} value={s}>{s === 'select' ? 'Select season...' : s}</option>
+          ))}
+        </select>
         <button type="submit" className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500">
           Create team
         </button>
