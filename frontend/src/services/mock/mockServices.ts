@@ -6,6 +6,7 @@ import type {
   RsvpSummary,
   Team,
   TeamEvent,
+  TeamMembership,
   TeamMessage,
   User,
 } from '../../types'
@@ -39,6 +40,11 @@ const teamMessages = clone(seedTeamMessages)
 const dms = clone(seedDms)
 
 const findUser = (id: string): User | undefined => users.find((u) => u.userId === id)
+
+// Check if a user has a parent email in any team membership
+function hasParentEmail(userId: string): boolean {
+  return memberships.some((m) => m.userId === userId && m.parentEmail)
+}
 
 function summarize(eventId: string): RsvpSummary {
   const list = rsvps.filter((r) => r.eventId === eventId)
@@ -124,6 +130,31 @@ export function createMockServices(): AppServices {
             .filter((g) => g.playerId === m.userId)
             .map((g) => ({ guardian: findUser(g.guardianId)!, relation: g.relation })),
         }))
+    },
+    async addMember(teamId, input: { name: string; jerseyNumber?: number; parentEmail?: string }) {
+      await delay()
+      // Find or create user
+      let user = users.find((u) => u.email === input.parentEmail) || users.find((u) => u.name === input.name)
+      if (!user) {
+        user = {
+          userId: newId(),
+          email: input.parentEmail ?? `${input.name.toLowerCase().replace(' ', '.')}@team.app`,
+          name: input.name,
+          role: 'PLAYER',
+          createdAt: nowIso(),
+        }
+        users.push(user)
+      }
+      const membership: TeamMembership = {
+        teamId,
+        userId: user.userId,
+        joinedAt: nowIso(),
+        teamRole: 'PLAYER',
+        jerseyNumber: input.jerseyNumber,
+        parentEmail: input.parentEmail,
+      }
+      memberships.push(membership)
+      return { ...membership, user }
     },
   }
 
@@ -223,6 +254,10 @@ export function createMockServices(): AppServices {
     },
     async sendMessage(otherUserId, content, gifUrl, imageUrl) {
       await delay()
+      // Block DM if recipient has a parent email
+      if (hasParentEmail(otherUserId)) {
+        throw new Error('Cannot send DM to a player with a parent email on file')
+      }
       const msg: DirectMessage = {
         msgId: newId(),
         dmChannelId: dmChannel(CURRENT_USER_ID, otherUserId),

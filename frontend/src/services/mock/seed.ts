@@ -20,6 +20,9 @@ export const seedUsers: User[] = [
   { userId: 'u5', email: 'maria@team.app', name: 'Maria Chen', role: 'PARENT', createdAt: '2026-08-05T10:00:00.000Z' },
   { userId: 'u6', email: 'david@team.app', name: 'David Chen', role: 'PARENT', createdAt: '2026-08-06T10:00:00.000Z' },
   { userId: 'u7', email: 'riley@team.app', name: 'Riley Park', role: 'PARENT', createdAt: '2026-08-07T10:00:00.000Z' },
+  { userId: 'u8', email: 'player8@team.app', name: 'Player Eight', role: 'PLAYER', createdAt: '2026-08-08T10:00:00.000Z' },
+  { userId: 'u9', email: 'player9@team.app', name: 'Player Nine', role: 'PLAYER', createdAt: '2026-08-09T10:00:00.000Z' },
+  { userId: 'u10', email: 'parent10@team.app', name: 'Parent Ten', role: 'PARENT', createdAt: '2026-08-10T10:00:00.000Z' },
 ]
 
 export const seedTeams: Team[] = [
@@ -34,6 +37,8 @@ export const seedMemberships: TeamMembership[] = [
   { teamId: 't1', userId: 'u4', joinedAt: '2026-08-13T10:00:00.000Z', teamRole: 'MANAGER' },
   { teamId: 't2', userId: 'u1', joinedAt: '2026-09-01T10:00:00.000Z', teamRole: 'COACH' },
   { teamId: 't2', userId: 'u2', joinedAt: '2026-09-02T10:00:00.000Z', teamRole: 'PLAYER', jerseyNumber: 23 },
+  { teamId: 't1', userId: 'u8', joinedAt: '2026-08-14T10:00:00.000Z', teamRole: 'PLAYER', jerseyNumber: 5, parentEmail: 'parent1@test.com' },
+  { teamId: 't1', userId: 'u9', joinedAt: '2026-08-15T10:00:00.000Z', teamRole: 'PLAYER', jerseyNumber: 12, parentEmail: 'parent2@test.com' },
 ]
 
 // Links a parent/guardian user to a player user.

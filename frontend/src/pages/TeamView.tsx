@@ -34,6 +34,10 @@ export default function TeamView() {
   const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(true)
   const [sendingImage, setSendingImage] = useState(false)
+  const [showAddPlayer, setShowAddPlayer] = useState(false)
+  const [playerName, setPlayerName] = useState('')
+  const [playerJerseyNumber, setPlayerJerseyNumber] = useState<number | undefined>(undefined)
+  const [playerParentEmail, setPlayerParentEmail] = useState('')
   const [showCreateEvent, setShowCreateEvent] = useState(false)
   const [eventName, setEventName] = useState('')
   const [eventLocation, setEventLocation] = useState('')
@@ -81,6 +85,21 @@ export default function TeamView() {
     setEventStartTime('')
     setEventEndTime('')
     setEvents(await services.events.listEvents(teamId))
+  }
+
+  const addPlayer = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!playerName.trim()) return
+    await services.teams.addMember(teamId, {
+      name: playerName.trim(),
+      jerseyNumber: playerJerseyNumber || undefined,
+      parentEmail: playerParentEmail?.trim(),
+    })
+    setMembers(await services.teams.listMembers(teamId))
+    setShowAddPlayer(false)
+    setPlayerName('')
+    setPlayerJerseyNumber(undefined)
+    setPlayerParentEmail('')
   }
 
   const send = async (e: FormEvent) => {
@@ -186,7 +205,9 @@ export default function TeamView() {
                     placeholder="Message the team..."
                     className="flex-1 rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
                   />
-                  <button type="submit" className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500">Send</button>
+                  <button type="submit" className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500">
+                    Send
+                  </button>
                 </form>
               ) : composer === 'gif' ? (
                 <GifPicker onSelect={sendGif} />
@@ -289,6 +310,50 @@ export default function TeamView() {
         <section className="space-y-6">
           <div>
             <h2 className="mb-2 text-lg font-semibold">Players</h2>
+            <div className="mb-4">
+              <button
+                onClick={() => setShowAddPlayer(true)}
+                className="rounded bg-indigo-600 px-3 py-1.5 text-sm font-medium hover:bg-indigo-500"
+              >
+                Add Player
+              </button>
+            </div>
+            {showAddPlayer && (
+              <form onSubmit={addPlayer} className="space-y-2 rounded-lg border border-gray-700 bg-gray-800 p-3">
+                <input
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder="Player name"
+                  className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
+                />
+                <input
+                  type="number"
+                  value={playerJerseyNumber || ''}
+                  onChange={(e) => setPlayerJerseyNumber(e.target.value ? parseInt(e.target.value) : undefined)}
+                  placeholder="Jersey number (optional)"
+                  className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
+                />
+                <input
+                  type="email"
+                  value={playerParentEmail}
+                  onChange={(e) => setPlayerParentEmail(e.target.value)}
+                  placeholder="Parent email (optional)"
+                  className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm"
+                />
+                <div className="flex gap-2">
+                  <button type="submit" className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500">
+                    Add Player
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPlayer(false)}
+                    className="rounded bg-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
             <ul className="divide-y divide-gray-700 rounded-lg border border-gray-700 bg-gray-800">
               {players.length === 0 && <li className="p-3 text-sm text-gray-400">No players.</li>}
               {players.map((m) => (
@@ -298,8 +363,11 @@ export default function TeamView() {
                       <span className="font-medium">{m.user?.name ?? m.userId}</span>
                       {m.jerseyNumber ? <span className="text-xs text-gray-400">#{m.jerseyNumber}</span> : null}
                       <span className="text-xs text-gray-500">Player</span>
+                      {m.parentEmail && (
+                        <span className="text-xs text-indigo-400">(guardian: {m.parentEmail})</span>
+                      )}
                     </div>
-                    {m.userId !== user?.userId && (
+                    {m.userId !== user?.userId && !m.parentEmail && (
                       <button onClick={() => dm(m.userId, m.user?.name)} className={msgBtn}>Message</button>
                     )}
                   </div>

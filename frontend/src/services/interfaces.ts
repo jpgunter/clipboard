@@ -23,6 +23,10 @@ export interface TeamService {
   getTeam(teamId: string): Promise<Team>
   createTeam(input: { teamName: string; sport: string; season: string }): Promise<Team>
   listMembers(teamId: string): Promise<TeamMembership[]>
+  addMember(
+    teamId: string,
+    input: { name: string; jerseyNumber?: number; parentEmail?: string },
+  ): Promise<TeamMembership>
 }
 
 export interface EventService {
