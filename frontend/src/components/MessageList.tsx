@@ -22,10 +22,11 @@ interface MessageListProps {
   emptyText?: string
 }
 
-const IMAGE_EXT_REGEX = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i
+// Matches: file extensions OR common image hosting patterns (Giphy, Imgur, etc.)
+const IMAGE_URL_REGEX = /(?:https?:\/\/(?:media\.)?giphy\.com\/[^\s]+)|(?:https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|bmp|svg)(?:\?[^\s]*)?)/i
 
 function extractUrl(content: string): string | null {
-  const match = content.match(IMAGE_EXT_REGEX)
+  const match = content.match(IMAGE_URL_REGEX)
   return match ? match[0] : null
 }
 

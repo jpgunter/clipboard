@@ -33,6 +33,7 @@ export default function TeamView() {
   const [messages, setMessages] = useState<TeamMessage[]>([])
   const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(true)
+  const [sendingImage, setSendingImage] = useState(false)
 
   const load = async () => {
     const [t, m, ev, msgs] = await Promise.all([
@@ -72,9 +73,28 @@ export default function TeamView() {
   }
 
   const sendImage = async (imageUrl: string) => {
-    await services.messages.postTeamMessage(teamId, '', undefined, imageUrl)
-    setComposer('text')
-    setMessages(await services.messages.listTeamMessages(teamId))
+    const tempId = `temp-${Date.now()}`
+    // Show placeholder with spinner immediately
+    const placeholderMsg: TeamMessage = {
+      msgId: tempId,
+      teamId,
+      senderId: user?.userId ?? 'temp',
+      content: '',
+      createdAt: new Date().toISOString(),
+      imageUrl,
+    }
+    setMessages((prev) => [placeholderMsg, ...prev])
+
+    setSendingImage(true)
+    try {
+      await new Promise((r) => setTimeout(r, 2000)) // mock upload (2s)
+      const realMsg = await services.messages.postTeamMessage(teamId, '', undefined, imageUrl)
+      setMessages((prev) => prev.map((m) => (m.msgId === tempId ? realMsg : m)))
+    } finally {
+      setSendingImage(false)
+      setComposer('text')
+      setMessages(await services.messages.listTeamMessages(teamId))
+    }
   }
 
   const reactTeam = async (msgId: string, emoji: string) => {
@@ -147,7 +167,7 @@ export default function TeamView() {
               ) : composer === 'gif' ? (
                 <GifPicker onSelect={sendGif} />
               ) : (
-                <ImagePicker onSelect={sendImage} />
+                <ImagePicker onSelect={sendImage} sending={sendingImage} />
               )}
             </div>
           </div>

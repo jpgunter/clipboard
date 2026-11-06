@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useServices } from '../context/ServicesContext'
 
-export function ImagePicker({ onSelect }: { onSelect: (imageUrl: string) => void }) {
+export function ImagePicker({ onSelect, sending = false }: { onSelect: (imageUrl: string) => void; sending?: boolean }) {
   const services = useServices()
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -47,12 +47,20 @@ export function ImagePicker({ onSelect }: { onSelect: (imageUrl: string) => void
           {previewUrl ? 'Image selected' : 'Select Image (PNG, JPG, GIF up to 5MB)'}
         </label>
         {previewUrl && (
-          <div className="mt-2 text-center">
+          <div className="mt-2 text-center relative inline-block">
             <img
               src={previewUrl}
               alt="Preview"
               className="mx-auto max-h-32 rounded border border-gray-700"
             />
+            {sending && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded border border-indigo-400 z-10">
+                <div className="flex flex-col items-center gap-1 text-indigo-300">
+                  <div className="animate-spin rounded-full h-6 w-6 border-4 border-t-indigo-600 border-gray-700" />
+                  <span className="text-xs font-medium">Uploading…</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

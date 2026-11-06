@@ -23,6 +23,7 @@ export default function MessagingCenter() {
   const [draft, setDraft] = useState('')
   const [composer, setComposer] = useState<Composer>('text')
   const [loading, setLoading] = useState(true)
+  const [sendingImage, setSendingImage] = useState(false)
 
   const openByUser = async (otherUserId: string, name?: string) => {
     setActive({ otherUserId, otherUserName: name ?? otherUserId })
@@ -61,12 +62,32 @@ export default function MessagingCenter() {
     setInbox(await services.dms.listInbox())
   }
 
-  const sendImage = async (imageUrl: string) => {
+const sendImage = async (imageUrl: string) => {
     if (!active) return
-    await services.dms.sendMessage(active.otherUserId, '', undefined, imageUrl)
-    setComposer('text')
-    setMessages(await services.dms.listMessages(active.otherUserId))
-    setInbox(await services.dms.listInbox())
+    const tempId = `temp-${Date.now()}`
+    // Show placeholder with spinner immediately
+    const placeholderMsg: DirectMessage = {
+      msgId: tempId,
+      dmChannelId: '',
+      senderId: 'temp-user', // placeholder for current user
+      recipientId: active.otherUserId,
+      content: '',
+      createdAt: new Date().toISOString(),
+      imageUrl,
+    }
+    setMessages((prev) => [placeholderMsg, ...prev])
+
+    setSendingImage(true)
+    try {
+      await new Promise((r) => setTimeout(r, 2000)) // mock upload (2s)
+      const realMsg = await services.dms.sendMessage(active.otherUserId, '', undefined, imageUrl)
+      setMessages((prev) => prev.map((m) => (m.msgId === tempId ? realMsg : m)))
+    } finally {
+      setSendingImage(false)
+      setComposer('text')
+      setMessages(await services.dms.listMessages(active.otherUserId))
+      setInbox(await services.dms.listInbox())
+    }
   }
 
   const reactDm = async (msgId: string, emoji: string) => {
@@ -133,7 +154,7 @@ export default function MessagingCenter() {
                 ) : composer === 'gif' ? (
                   <GifPicker onSelect={sendGif} />
                 ) : (
-                  <ImagePicker onSelect={sendImage} />
+                  <ImagePicker onSelect={sendImage} sending={sendingImage} />
                 )}
               </div>
             </div>
