@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import { useServices } from '../context/ServicesContext'
 
 export function ImagePicker({ onSelect, sending = false }: { onSelect: (imageUrl: string) => void; sending?: boolean }) {
-  const services = useServices()
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
